@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sayı Tahmin Oyunu</title>
+<style>
+  :root {
+    --bg: #ffd23f; --card: #ffffff; --ink: #1d1b4b; --muted: #5a5890;
+    --line: #dcdaf5; --tile: #eeedff; --up: #3a86ff; --down: #ff4f81;
+    --good: #19a463; --bad: #e63946; --on: #1d1b4b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1d1b4b; --card: #2b2870; --ink: #f4f3ff; --muted: #b6b3f0;
+      --line: #43409a; --tile: #1d1b4b; --up: #7db4ff; --down: #ff7fa5;
+      --good: #6ee7a8; --bad: #ff7a85;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+    background: var(--bg); color: var(--ink);
+    font-family: "Arial Rounded MT Bold", "Segoe UI", system-ui, sans-serif;
+  }
+  main {
+    width: 100%; max-width: 460px; background: var(--card);
+    border: 3px solid var(--ink); border-radius: 20px; padding: 22px;
+    box-shadow: 0 7px 0 var(--ink);
+  }
+  h1 { margin: 0; font-size: 1.7rem; line-height: 1.1; }
+  .sub { margin: 4px 0 18px; color: var(--muted); font-family: system-ui, sans-serif; }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+  legend { font-size: .95rem; margin-bottom: 8px; padding: 0; color: var(--muted); }
+  .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .levels input { position: absolute; opacity: 0; }
+  .levels label {
+    display: block; text-align: center; padding: 9px 2px; cursor: pointer; font-size: .88rem;
+    border: 2px solid var(--line); border-radius: 12px; background: var(--tile);
+  }
+  .levels input:checked + label {
+    background: var(--c); border-color: var(--ink); color: var(--on);
+    box-shadow: 0 3px 0 var(--ink); transform: translateY(-2px);
+  }
+  .levels input:focus-visible + label { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  .stage { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  #tile {
+    flex: none; width: 84px; height: 84px; display: grid; place-items: center;
+    font-size: 2.4rem; background: var(--tile); border: 3px solid var(--ink); border-radius: 16px;
+  }
+  #tile.win { background: var(--good); color: var(--on); }
+  #tile.lose { background: var(--bad); color: var(--on); }
+  .stats { flex: 1; min-width: 0; }
+  #rangeText { font-size: 1.1rem; }
+  #dots { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  #dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); }
+  #dots i.used { background: transparent; border: 2px solid var(--line); }
+
+  .track { position: relative; height: 14px; margin: 6px 7px 8px; background: var(--tile); border: 2px solid var(--line); border-radius: 8px; }
+  .zone { position: absolute; top: 0; bottom: 0; background: var(--c); opacity: .55; border-radius: 6px; transition: left .25s, width .25s; }
+  .mark { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid var(--ink); }
+  .mark.u { background: var(--up); } .mark.d { background: var(--down); }
+  .mark.s { background: var(--good); width: 18px; height: 18px; margin: -9px 0 0 -9px; }
+  #hint { min-height: 1.4em; margin: 0 0 14px; font-size: .9rem; color: var(--muted); font-family: system-ui, sans-serif; }
+
+  form { display: flex; gap: 8px; }
+  input[type=number] {
+    flex: 1; min-width: 0; font: inherit; font-size: 1.3rem; padding: 10px 12px;
+    border: 3px solid var(--ink); border-radius: 12px; background: var(--tile); color: var(--ink);
+  }
+  button {
+    font: inherit; padding: 10px 18px; cursor: pointer; color: var(--on);
+    border: 3px solid var(--ink); border-radius: 12px; background: var(--c); box-shadow: 0 4px 0 var(--ink);
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  button.alt { background: var(--card); color: var(--ink); box-shadow: 0 3px 0 var(--ink); padding: 8px 16px; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--up); outline-offset: 2px; }
+  button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+
+  #msg { min-height: 2.6em; margin: 16px 0 8px; font-size: 1.1rem; }
+  .good { color: var(--good); } .bad { color: var(--bad); }
+  #history { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 16px; }
+  #history li { border-radius: 10px; padding: 3px 10px; font-size: .95rem; border: 2px solid var(--ink); }
+  #history .u { background: var(--up); color: var(--on); }
+  #history .d { background: var(--down); color: var(--on); }
+  #history .w { background: var(--good); color: var(--on); }
+  #best { color: var(--muted); font-size: .9rem; margin: 12px 0 0; font-family: system-ui, sans-serif; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .shake { animation: shake .3s; }
+    .pop { animation: pop .4s; }
+    @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    @keyframes pop { 40% { transform: scale(1.25) rotate(-4deg); } }
+  }
+</style>
+</head>
+<body>
+<main id="app">
+  <h1>Sayı Tahmin Oyunu</h1>
+  <p class="sub">Aklımdan bir sayı tuttum. Bulabilir misin?</p>
+
+  <fieldset>
+    <legend>Zorluk seç</legend>
+    <div class="levels" id="levels"></div>
+  </fieldset>
+
+  <div class="stage">
+    <div id="tile" aria-hidden="true">?</div>
+    <div class="stats">
+      <div id="rangeText"></div>
+      <div id="dots" aria-hidden="true"></div>
+      <div id="triesText" style="font-size:.85rem;color:var(--muted);margin-top:4px;font-family:system-ui,sans-serif"></div>
+    </div>
+  </div>
+
+  <div class="track" id="track" aria-hidden="true"><div class="zone" id="zone"></div></div>
+  <p id="hint"></p>
+
+  <form id="form">
+    <label for="guess" style="position:absolute;left:-9999px">Tahminin</label>
+    <input type="number" id="guess" inputmode="numeric" autocomplete="off" placeholder="Tahminin">
+    <button type="submit" id="send">Tahmin et</button>
+  </form>
+
+  <p id="msg" role="status" aria-live="polite"></p>
+  <ul id="history" aria-label="Önceki tahminler"></ul>
+  <button type="button" class="alt" id="again">Yeni oyun</button>
+  <p id="best"></p>
+</main>
+
+<script>
+  const LEVELS = {
+    kolay:  { ad: "Kolay",   max: 50,   hak: 10, ipucu: true,  c: "#6ee7a8" },
+    orta:   { ad: "Orta",    max: 100,  hak: 7,  ipucu: true,  c: "#7db4ff" },
+    zor:    { ad: "Zor",     max: 500,  hak: 9,  ipucu: false, c: "#ffb454" },
+    cokzor: { ad: "Çok zor", max: 1000, hak: 9,  ipucu: false, c: "#ff7a85" }
+  };
+
+  let level = "kolay", secret, left, low, high, over, tries;
+  const $ = (id) => document.getElementById(id);
+  const msg = $("msg"), input = $("guess"), send = $("send"), tile = $("tile");
+
+  function loadBest() {
+    try { return JSON.parse(localStorage.getItem("sayiOyunuRekor")) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveBest(key, n) {
+    try {
+      const b = loadBest();
+      if (!b[key] || n < b[key]) { b[key] = n; localStorage.setItem("sayiOyunuRekor", JSON.stringify(b)); }
+    } catch (e) {}
+  }
+  function showBest() {
+    const b = loadBest()[level];
+    $("best").textContent = b ? "Bu seviyedeki en iyi sonucun: " + b + " tahmin" : "";
+  }
+  function pct(n) { return ((n - 1) / (LEVELS[level].max - 1)) * 100; }
+  function bump(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+  $("levels").innerHTML = Object.keys(LEVELS).map((k, i) =>
+    '<div><input type="radio" name="lvl" id="lvl-' + k + '" value="' + k + '"' + (i === 0 ? " checked" : "") + '>' +
+    '<label for="lvl-' + k + '" style="--c:' + LEVELS[k].c + '">' + LEVELS[k].ad + '</label></div>'
+  ).join("");
+  document.querySelectorAll('input[name="lvl"]').forEach((r) =>
+    r.addEventListener("change", () => { level = r.value; start(); })
+  );
+
+  function start() {
+    const L = LEVELS[level];
+    secret = Math.floor(Math.random() * L.max) + 1;
+    left = L.hak; low = 1; high = L.max; over = false; tries = 0;
+    $("app").style.setProperty("--c", L.c);
+    $("history").innerHTML = "";
+    $("track").querySelectorAll(".mark").forEach((m) => m.remove());
+    $("rangeText").textContent = "1 – " + L.max + " arası";
+    tile.textContent = "?"; tile.className = "";
+    msg.textContent = ""; msg.className = "";
+    input.value = ""; input.disabled = false; send.disabled = false;
+    input.min = 1; input.max = L.max;
+    update(); showBest(); input.focus();
+  }
+
+  function update() {
+    const L = LEVELS[level];
+    $("dots").innerHTML = Array.from({ length: L.hak }, (_, i) => '<i class="' + (i < L.hak - left ? "used" : "") + '"></i>').join("");
+    $("triesText").textContent = left + " hakkın kaldı";
+    const z = $("zone");
+    if (L.ipucu) {
+      z.style.display = "";
+      z.style.left = pct(low) + "%";
+      z.style.width = Math.max(pct(high) - pct(low), 1.5) + "%";
+      $("hint").textContent = "Sayı şu an " + low + " ile " + high + " arasında.";
+    } else {
+      z.style.display = "none";
+      $("hint").textContent = "Bu seviyede aralık ipucu yok.";
+    }
+  }
+
+  function addMark(n, cls) {
+    const m = document.createElement("span");
+    m.className = "mark " + cls; m.style.left = pct(n) + "%";
+    $("track").appendChild(m);
+  }
+
+  function finish(won) {
+    over = true; input.disabled = true; send.disabled = true;
+    tile.textContent = secret; tile.className = won ? "win" : "lose";
+    bump(tile, "pop"); addMark(secret, "s");
+  }
+
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (over) return;
+    const L = LEVELS[level];
+    const n = parseInt(input.value, 10);
+
+    if (isNaN(n) || n < 1 || n > L.max) {
+      msg.className = "bad";
+      msg.textContent = "1 ile " + L.max + " arasında bir sayı yaz.";
+      bump(input, "shake");
+      return;
+    }
+
+    tries++; left--;
+    const li = document.createElement("li");
+
+    if (n === secret) {
+      li.className = "w"; li.textContent = n + " ✓";
+      $("history").appendChild(li);
+      msg.className = "good";
+      msg.textContent = "Doğru! " + tries + " tahminde buldun.";
+      saveBest(level, tries); showBest(); update(); finish(true);
+      return;
+    }
+
+    const bigger = secret > n;
+    li.className = bigger ? "u" : "d";
+    li.textContent = n + (bigger ? " ↑" : " ↓");
+    $("history").appendChild(li);
+    addMark(n, bigger ? "u" : "d");
+    if (bigger) low = Math.max(low, n + 1); else high = Math.min(high, n - 1);
+    update();
+
+    if (left === 0) {
+      msg.className = "bad";
+      msg.textContent = "Hakkın bitti. Sayı " + secret + " idi.";
+      finish(false);
+      return;
+    }
+
+    msg.className = "";
+    msg.textContent = bigger ? "Daha büyük bir sayı söyle." : "Daha küçük bir sayı söyle.";
+    input.value = ""; input.focus();
+  });
+
+  $("again").addEventListener("click", start);
+  start();
+</script>
+</body>
+</html>
